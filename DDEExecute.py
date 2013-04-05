@@ -34,8 +34,7 @@ class SendDdeCommand(sublime_plugin.TextCommand):
 		# server and topic names, as LPTSTR = wchar *
 		service = c_wchar_p(service)
 		topic = c_wchar_p(topic)
-		encCommand = command.encode("utf-8")
-		pData = c_char_p(encCommand)
+		pData = c_char_p(command)
 		cbData = len(command)+1 # Important! Zero-terminated!
 		
 		# initialize
