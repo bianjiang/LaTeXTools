@@ -66,4 +66,3 @@ class SendDdeCommand(sublime_plugin.TextCommand):
 		DdeFreeStringHandle(idInst, hszService)
 		DdeDisconnect(hConv)
 		DdeUninitialize(idInst)
-		
