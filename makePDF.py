@@ -1,8 +1,10 @@
 import sublime, sublime_plugin
 import sys, os, os.path, platform, threading, functools
 import subprocess
+import tempfile
 import types
 import re
+import shutil
 from . import getTeXRoot
 from . import parseTeXlog
 
@@ -66,8 +68,10 @@ class CmdThread ( threading.Thread ):
 			self.caller.output("Attempted command:")
 			self.caller.output(" ".join(cmd))
 			self.caller.proc = None
+			if self.caller.texmfcnf is not None:
+				shutil.rmtree(self.caller.texmfcnf)
 			return
-		
+
 		# restore path if needed
 		if self.caller.path:
 			os.environ["PATH"] = old_path
@@ -88,18 +92,22 @@ class CmdThread ( threading.Thread ):
 			print(proc.returncode)
 			self.caller.output("\n\n[User terminated compilation process]\n")
 			self.caller.finish(False)	# We kill, so won't switch to PDF anyway
+			if self.caller.texmfcnf is not None:
+				shutil.rmtree(self.caller.texmfcnf)
 			return
 		# Here we are done cleanly:
 		self.caller.proc = None
 		print("Finished normally")
 		print(proc.returncode)
+		if self.caller.texmfcnf is not None:
+			shutil.rmtree(self.caller.texmfcnf)
 
 		# this is a conundrum. We used (ST1) to open in binary mode ('rb') to avoid
 		# issues, but maybe we just need to decode?
 		# 12-10-27 NO! We actually do need rb, because MikTeX on Windows injects Ctrl-Z's in the
 		# log file, and this just causes Python to stop reading the file.
 
-		# OK, this seems solid: first we decode using the self.caller.encoding, 
+		# OK, this seems solid: first we decode using the self.caller.encoding,
 		# then we reencode using the default locale's encoding.
 		# Note: we get this using ST2's own getdefaultencoding(), not the locale module
 		# We ignore bad chars in both cases.
@@ -116,8 +124,8 @@ class CmdThread ( threading.Thread ):
 		# byte array (? whatever read() returns), this does not happen---we only break at \n, etc.
 		# However, we must still decode the resulting lines using the relevant encoding.
 		# 121101 -- moved splitting and decoding logic to parseTeXlog, where it belongs.
-		
-		data = open(self.caller.tex_base + ".log", 'rb').read()		
+
+		data = open(self.caller.tex_base + ".log", 'rb').read()
 
 		errors = []
 		warnings = []
@@ -126,18 +134,18 @@ class CmdThread ( threading.Thread ):
 			(errors, warnings) = parseTeXlog.parse_tex_log(data)
 			content = ["",""]
 			if errors:
-				content.append("There were errors in your LaTeX source") 
+				content.append("There were errors in your LaTeX source")
 				content.append("")
 				content.extend(errors)
 			else:
 				content.append("Texification succeeded: no errors!")
-				content.append("") 
+				content.append("")
 			if warnings:
 				if errors:
 					content.append("")
-					content.append("There were also warnings.") 
+					content.append("There were also warnings.")
 				else:
-					content.append("However, there were warnings in your LaTeX source") 
+					content.append("However, there were warnings in your LaTeX source")
 				content.append("")
 				content.extend(warnings)
 		except Exception as e:
@@ -169,7 +177,7 @@ class CmdThread ( threading.Thread ):
 class MakePdfCommand(sublime_plugin.WindowCommand):
 
 	def run(self, cmd="", file_regex="", path=""):
-		
+
 		# Try to handle killing
 		if hasattr(self, 'proc') and self.proc: # if we are running, try to kill running process
 			self.output("\n\n### Got request to terminate compilation ###")
@@ -178,7 +186,7 @@ class MakePdfCommand(sublime_plugin.WindowCommand):
 			return
 		else: # either it's the first time we run, or else we have no running processes
 			self.proc = None
-		
+
 		view = self.window.active_view()
 
 		self.file_name = getTeXRoot.get_tex_root(view)
@@ -191,19 +199,34 @@ class MakePdfCommand(sublime_plugin.WindowCommand):
 
 		s = sublime.load_settings("LaTeXTools Preferences.sublime-settings")
 		if s.get("use_temporary_dir", False):
-			tex_dir = os.path.join(tex_dir, ".latex-tmp")
+			tmp_dir = os.path.join(tex_dir, ".latex-tmp")
 
-			if not os.path.exists(tex_dir):
-				os.makedirs(tex_dir)
+			if not os.path.exists(tmp_dir):
+				os.makedirs(tmp_dir)
+
+			# use -jobname with latexmk
+			if cmd[0] == 'latexmk':
+				cmd += ['-jobname=%s' % os.path.join(tmp_dir,
+				                                     os.path.basename(self.tex_base))]
+
+				# force openout_any=r due to the dot in the temporary_dir name
+				self.texmfcnf = tempfile.mkdtemp()
+				os.environ['TEXMFCNF'] = self.texmfcnf + ':'
+				with open(os.path.join(self.texmfcnf, 'texmf.cnf'), 'w') as texmf:
+					texmf.write('openout_any=r\n')
+			else:
+				tex_dir = tmp_dir
+				self.texmfcnf = None
 
 			theHead, theTail = os.path.split(self.tex_base)
 			theHead = os.path.join(theHead, ".latex-tmp")
 			self.tex_base = os.path.join(theHead, theTail)
+		else:
+			self.texmfcnf = None
 
-		
 		# Extra paths
 		self.path = path
-			
+
 		# Output panel: from exec.py
 		if not hasattr(self, 'output_view'):
 			self.output_view = self.window.get_output_panel("exec")
@@ -226,11 +249,11 @@ class MakePdfCommand(sublime_plugin.WindowCommand):
 		if view.is_dirty():
 			print("saving...")
 			view.run_command('save') # call this on view, not self.window
-		
+
 		if self.tex_ext.upper() != ".TEX":
 			sublime.error_message("%s is not a TeX source file: cannot compile." % (os.path.basename(view.file_name()),))
 			return
-		
+
 		s = platform.system()
 		if s == "Darwin":
 			self.encoding = "UTF-8"
@@ -240,13 +263,12 @@ class MakePdfCommand(sublime_plugin.WindowCommand):
 			self.encoding = "UTF-8"
 		else:
 			sublime.error_message("Platform as yet unsupported. Sorry!")
-			return	
+			return
 		print(self.make_cmd + [self.file_name])
-		
+
 		os.chdir(tex_dir)
 		CmdThread(self).start()
 		print(threading.active_count())
-
 
 	# Threading headaches :-)
 	# The following function is what gets called from CmdThread; in turn,
