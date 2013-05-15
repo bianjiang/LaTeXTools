@@ -48,7 +48,7 @@ class JumpToPdfCommand(sublime_plugin.TextCommand):
 			shutil.copy(generatedPDF, os.path.dirname(root))
 			os.remove(generatedPDF)
 
-		if prefs_skim and s.get("use_temporary_dir", False):
+		if (prefs_skim or 'linux' in sublime_plugin.sys.platform) and s.get("use_temporary_dir", False):
 			generatedSyncTeX = pdfHead + pdfTail + u'.synctex.gz'
 			shutil.copy(generatedSyncTeX, os.path.dirname(root))
 			os.remove(generatedSyncTeX)
