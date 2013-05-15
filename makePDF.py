@@ -205,7 +205,7 @@ class MakePdfCommand(sublime_plugin.WindowCommand):
 				os.makedirs(tmp_dir)
 
 			# use -jobname with latexmk
-			if cmd[0] == 'latexmk':
+			if cmd[0] == 'latexmk' and ' ' not in tmp_dir:
 				cmd += ['-jobname=%s' % os.path.join(tmp_dir,
 				                                     os.path.basename(self.tex_base))]
 
