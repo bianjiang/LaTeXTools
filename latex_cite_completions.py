@@ -2,6 +2,7 @@ import sublime, sublime_plugin
 import os, os.path
 import re
 from . import getTeXRoot
+import codecs
 
 def match(rex, str):
     m = rex.match(str)
@@ -24,13 +25,13 @@ def find_bib_files(rootdir, src, bibfiles):
 
     # read src file and extract all bibliography tags
     try:
-        src_file = open(file_path, "r")
+        src_file = codecs.open(file_path, "r", "utf-8")
     except IOError:
         sublime.status_message("LaTeXTools WARNING: cannot open included file " + file_path)
         print("WARNING! I can't find it! Check your \\include's and \\input's.") 
         return
 
-    src_content = re.sub("%.*","",src_file.read())
+    src_content = re.sub(u"%.*",u"",src_file.read())
     bibtags =  re.findall(r'\\bibliography\{[^\}]+\}', src_content)
 
     # extract absolute filepath for each bib file
@@ -194,7 +195,7 @@ class LatexCiteCompletions(sublime_plugin.EventListener):
             # bibfname = os.path.normpath(os.path.join(texfiledir, bibfname))
             # print repr(bibfname) 
             try:
-                bibf = open(bibfname)
+                bibf = codecs.open(bibfname, "r", "utf-8")
             except IOError:
                 print("Cannot open bibliography file %s !" % (bibfname,))
                 sublime.status_message("Cannot open bibliography file %s !" % (bibfname,))
@@ -357,7 +358,7 @@ class LatexCiteCommand(sublime_plugin.TextCommand):
             # bibfname = os.path.normpath(os.path.join(texfiledir, bibfname))
             # print repr(bibfname) 
             try:
-                bibf = open(bibfname)
+                bibf = codecs.open(bibfname, "r", "utf-8")
             except IOError:
                 print("Cannot open bibliography file %s !" % (bibfname,))
                 sublime.status_message("Cannot open bibliography file %s !" % (bibfname,))
