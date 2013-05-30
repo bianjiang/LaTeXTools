@@ -40,17 +40,19 @@ class JumpToPdfCommand(sublime_plugin.TextCommand):
 		print("!TEX root = ", repr(root)) # need something better here, but this works.
 		rootName, rootExt = os.path.splitext(root)
 		pdffile = rootName + '.pdf'
+		root_path, _ = os.path.split(root)
+		tmp_path = os.path.join(root_path, '.latex-tmp')
 
 		if s.get("use_temporary_dir", False):
-			pdfHead, pdfTail = os.path.split(rootName)
-			pdfHead += '/.latex-tmp/'
-			generatedPDF = pdfHead + pdfTail + '.pdf'
-			shutil.copy(generatedPDF, os.path.dirname(root))
+			_, pdf_name = os.path.split(pdffile)
+			generatedPDF = os.path.join(tmp_path, pdf_name)
+			shutil.copy2(generatedPDF, root_path)
 			os.remove(generatedPDF)
 
 		if (prefs_skim or 'linux' in sublime_plugin.sys.platform) and s.get("use_temporary_dir", False):
-			generatedSyncTeX = pdfHead + pdfTail + u'.synctex.gz'
-			shutil.copy(generatedSyncTeX, os.path.dirname(root))
+			syncTeXName = os.path.split(rootName)[1] + u'.synctex.gz'
+			generatedSyncTeX = os.path.join(tmp_path, syncTeXName)
+			shutil.copy2(generatedSyncTeX, root_path)
 			os.remove(generatedSyncTeX)
 
 
