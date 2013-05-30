@@ -2,6 +2,7 @@ import sublime, sublime_plugin
 import os, os.path
 import re
 from . import getTeXRoot
+import codecs
 
 
 def match(rex, str):
@@ -27,8 +28,8 @@ def find_labels_in_files(rootdir, src, labels):
 
     # read src file and extract all label tags
     try:
-        with open(file_path, "r") as src_file:
-            src_content = re.sub("%.*", "", src_file.read())
+        with codecs.open(file_path, "r", "utf-8") as src_file:
+            src_content = re.sub(u"%.*", u"", src_file.read())
             labels += re.findall(r'\\label\{([^\{\}]+)\}', src_content)
     except IOError:
         sublime.status_message("LaTeXTools WARNING: cannot find included file " + file_path)
