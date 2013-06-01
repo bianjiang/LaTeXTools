@@ -47,13 +47,13 @@ class JumpToPdfCommand(sublime_plugin.TextCommand):
 			_, pdf_name = os.path.split(pdffile)
 			generatedPDF = os.path.join(tmp_path, pdf_name)
 			shutil.copy2(generatedPDF, root_path)
-			os.remove(generatedPDF)
+			# os.remove(generatedPDF)
 
 		if (prefs_skim or 'linux' in sublime_plugin.sys.platform) and s.get("use_temporary_dir", False):
 			syncTeXName = os.path.split(rootName)[1] + u'.synctex.gz'
 			generatedSyncTeX = os.path.join(tmp_path, syncTeXName)
 			shutil.copy2(generatedSyncTeX, root_path)
-			os.remove(generatedSyncTeX)
+			# os.remove(generatedSyncTeX)
 
 
 		(line, col) = self.view.rowcol(self.view.sel()[0].end())
