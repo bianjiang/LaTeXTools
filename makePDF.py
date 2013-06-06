@@ -201,6 +201,9 @@ class MakePdfCommand(sublime_plugin.WindowCommand):
 
         self.tex_base, self.tex_ext = os.path.splitext(self.file_name)
         tex_dir = os.path.dirname(self.file_name)
+        
+        #get a copy of the envi from os.environ anyway
+        self.envi = os.environ.copy()
 
         s = sublime.load_settings("LaTeXTools Preferences.sublime-settings")
         if s.get("use_temporary_dir", False):
@@ -216,7 +219,7 @@ class MakePdfCommand(sublime_plugin.WindowCommand):
 
                 # force openout_any=r due to the dot in the temporary_dir name
                 self.texmfcnf_d = tempfile.mkdtemp()
-                self.envi = os.environ.copy()
+                #self.envi = os.environ.copy()
                 if path:
                     env_tmp = self.envi.copy()
                     env_tmp['PATH'] += os.path.expandvars(path)
